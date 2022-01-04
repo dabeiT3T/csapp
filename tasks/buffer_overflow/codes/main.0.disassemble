@@ -1,0 +1,59 @@
+
+main.0:     file format elf64-x86-64
+
+000000000040057d <main>:
+  40057d:	55                   	push   %rbp
+  40057e:	48 89 e5             	mov    %rsp,%rbp
+  400581:	b8 00 00 00 00       	mov    $0x0,%eax
+  400586:	e8 6e 00 00 00       	callq  4005f9 <echo>
+  40058b:	b8 00 00 00 00       	mov    $0x0,%eax
+  400590:	5d                   	pop    %rbp
+  400591:	c3                   	retq   
+
+0000000000400592 <mgets>:
+  400592:	55                   	push   %rbp
+  400593:	48 89 e5             	mov    %rsp,%rbp
+  400596:	48 83 ec 20          	sub    $0x20,%rsp
+  40059a:	48 89 7d e8          	mov    %rdi,-0x18(%rbp)
+  40059e:	48 8b 45 e8          	mov    -0x18(%rbp),%rax
+  4005a2:	48 89 45 f8          	mov    %rax,-0x8(%rbp)
+  4005a6:	eb 11                	jmp    4005b9 <mgets+0x27>
+  4005a8:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+  4005ac:	48 8d 50 01          	lea    0x1(%rax),%rdx
+  4005b0:	48 89 55 f8          	mov    %rdx,-0x8(%rbp)
+  4005b4:	8b 55 f4             	mov    -0xc(%rbp),%edx
+  4005b7:	88 10                	mov    %dl,(%rax)
+  4005b9:	e8 b2 fe ff ff       	callq  400470 <getchar@plt>
+  4005be:	89 45 f4             	mov    %eax,-0xc(%rbp)
+  4005c1:	83 7d f4 0a          	cmpl   $0xa,-0xc(%rbp)
+  4005c5:	74 06                	je     4005cd <mgets+0x3b>
+  4005c7:	83 7d f4 ff          	cmpl   $0xffffffff,-0xc(%rbp)
+  4005cb:	75 db                	jne    4005a8 <mgets+0x16>
+  4005cd:	83 7d f4 ff          	cmpl   $0xffffffff,-0xc(%rbp)
+  4005d1:	75 11                	jne    4005e4 <mgets+0x52>
+  4005d3:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+  4005d7:	48 3b 45 e8          	cmp    -0x18(%rbp),%rax
+  4005db:	75 07                	jne    4005e4 <mgets+0x52>
+  4005dd:	b8 00 00 00 00       	mov    $0x0,%eax
+  4005e2:	eb 13                	jmp    4005f7 <mgets+0x65>
+  4005e4:	48 8b 45 f8          	mov    -0x8(%rbp),%rax
+  4005e8:	48 8d 50 01          	lea    0x1(%rax),%rdx
+  4005ec:	48 89 55 f8          	mov    %rdx,-0x8(%rbp)
+  4005f0:	c6 00 00             	movb   $0x0,(%rax)
+  4005f3:	48 8b 45 e8          	mov    -0x18(%rbp),%rax
+  4005f7:	c9                   	leaveq 
+  4005f8:	c3                   	retq   
+
+00000000004005f9 <echo>:
+  4005f9:	55                   	push   %rbp
+  4005fa:	48 89 e5             	mov    %rsp,%rbp
+  4005fd:	48 83 ec 10          	sub    $0x10,%rsp
+  400601:	48 8d 45 f0          	lea    -0x10(%rbp),%rax
+  400605:	48 89 c7             	mov    %rax,%rdi
+  400608:	e8 85 ff ff ff       	callq  400592 <mgets>
+  40060d:	48 8d 45 f0          	lea    -0x10(%rbp),%rax
+  400611:	48 89 c7             	mov    %rax,%rdi
+  400614:	e8 37 fe ff ff       	callq  400450 <puts@plt>
+  400619:	c9                   	leaveq 
+  40061a:	c3                   	retq   
+  40061b:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
