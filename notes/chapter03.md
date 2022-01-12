@@ -109,9 +109,13 @@ done:
 
 #### 3.7.2 转移控制
 
+> 在 x86-64 机器中，这个信息使用指令 `call Q` 调用过程 Q 来记录的。该指令会把地址 A 压入栈中，并将 PC 设置为 Q 的起始地址。压入的地址 A 被称为返回地址，是紧跟在 `call` 指令后面的那条指令的地址。对应的指令 `ret` 会从栈中弹出地址 A，并把 PC 设置为 A。
+
 *以下结论是在 `-Og` 的情况得出的。*
 
-运行时的寄存器状态完全由汇编/代码来控制，比如你需要将需要传递的参数自行按照顺序放入到 `%rdi`、`%rsi`、`%rdx` 的寄存器中，如果超过上线六个，怕是也是由代码事先准备好栈帧。
+运行时的寄存器状态完全由汇编/代码来控制，比如你需要将需要传递的参数自行按照顺序放入到 `%rdi`、`%rsi`、`%rdx` 的寄存器中，如果超过上限 6 个，怕是也是由代码事先准备好栈帧。
+
+**前 6 个分别是 `%rdi`、`%rsi`、`%rdx`、`%rcx`、`%r8`、`%r9`；**
 
 **栈顶是函数回调的地址，`%rsp+8` 是第 7 个参数，`%rsp+16` 是第 8 个参数，以此类推。**
 
@@ -377,4 +381,240 @@ struct S2 {
 > 最后一招是消除攻击者向系统中插入可执行代码的能力。一种方法是限制哪些内存区域能够存放可执行代码。在典型的程序中，只有保存编译器生成的代码的那部分内存才需要是可执行的。其他部分可以被限制为只允许读和写。
 >
 > 有些类型的程序要求动态产生和执行代码的能力。例如，“即时（just-in-time）”编译技术为解释语言（例如 Java）编写的程序动态地产生代码，以提高执行性能。是否能够将可执行代码限制在由编译器在创建程序时产生地那个部分中，取决于语言和操作系统。
+
+#### 3.10.5 支持变长栈帧
+
+> 为了管理变长栈帧，x86-64 代码使用寄存器 `%rbp` 作为帧指针（frame pointer）（有时称为基指针（base pointer），这也是 `%rbp` 中 bp 两个字母的由来）。可以看到代码必须把 `%rbp` 之前的值保存到栈中，因为它是一个被调用者保存寄存器。然后在函数的整个执行过程中，都使得 `%rbp` 指向那个时刻栈的位置。
+>
+> `leave` 指令将帧指针恢复到它之前的值。这条指令不需要参数，等价于执行下面两条指令：
+>
+> ```assembly
+> movq $rbp, $rsp
+> popq $rbp
+> ```
+>
+> 也就是说，首先把栈指针设置为保存 `%rbp` 值的位置，然后把该值从栈中弹出到 `%rbp`。这个指令组合具有释放整个栈帧的效果。
+>
+> 在较早版本的 x86 代码中，每个函数调用都使用了帧指针。而现在，只有栈帧长度可变的情况下才使用。
+
+不一定，之前栈帧长度不可变也使用了。
+
+### 3.11 浮点代码
+
+> 1997 年出现了 Pentium/MMX，Intel 和 AMD 都引入了持续数代的媒体指令，支持图形和图像处理。这些指令本意是允许多个操作以并行模式执行，称为单指令多数据或 SIMD。
+>
+> 每个扩展都是管理寄存器组中的数据，这些寄存器在 MMX 中称为 “MM” 寄存器，SSE 中称为 ”XMM“ 寄存器，而在 AVX 中称为 ”YMM“ 寄存器；
+>
+> 我们的讲述基于 AVX2，即 AVX 的第二个版本。当给定命令行参数 `-mavx2` 时，GCC 会生成 AVX2 代码。
+>
+> 当对标量数据操作时，这些寄存器只保存浮点数，而且只使用低 32 位（对于 float）或 64 位（对于 double）。汇编代码用寄存器的 SSE XMM 寄存器名字 `%xmm0`~`%xmm15` 来引用它们。
+
+**如果不使用命令行参数 `-mavx2` 默认生成的是 SSE 的命令集；**
+
+```bash
+gcc -mavx2
+```
+
+`AVX2` 命令集更强大，但需要 CPU 支持该命令集；
+
+以下部分命令属于 `avx` 命令集以 `v` 开头，除去 `v` 为 `SSE` 命令集；
+
+#### 3.11.1 浮点传送和转换操作
+
+> 引用内存的指令是标量指令，意味着它们只对单个而不是一组封装好的数据值进行操作。
+>
+> 无论数据对齐与否，这些指令都能正确执行，不过代码优化规则建议 32 位内存数据满足 4 字节对齐，64 位数据满足 8 字节对齐。
+>
+> 当用于读写内存时，如果地址不满足 16 字节对齐，它们会导致异常。
+
+GCC 把单精度值转化成双精度值使用
+
+```assembly
+vunpcklps %xmm0, %xmm0, %xmm0
+vcvtps2pd %xmm0, %xmm0
+```
+
+而不是以下命令，该命令在手册上是真实有的；
+
+```assembly
+vcvtss2sd %xmm0, %xmm0, %xmm0
+```
+
+在 `printf` 中使用 `%f` 打印单精度浮点数时，GCC 会使用最上方的两句指令将单精度转化成双精度后打印；
+
+GCC 把双精度值转化成单精度值使用
+
+```assembly
+vmovddup %xmm0, %xmm0
+vcvtpd2psx %xmm0, %xmm0
+```
+
+而不是
+
+```assembly
+vcvtsd2ss %xmm0, %xmm0, %xmm0
+```
+
+**浮点数的类型转换的目的地都是寄存器。**
+
+便于理解：
+
+- `vcvttss2si` 的含义为 `Convert with Truncation Scalar Single-Precision Floating-Point Value to Integer`。
+
+- `vunpcklps` 的含义为 `Unpack and Interleave Low Packed Single-Precision Floating Values`。
+
+  [s3, s2, s1, s0], [s7, s6, s5, s4] => [s1, s5, s0 , s4]
+
+- `vcvtps2pd` 的含义为 `Convert Packed Single-Precision Floating-Point Values to Packed Double-Precision Floating-Point`。
+
+  [x3, x2, s1, s0] => [d1, d0]
+
+- `vmovddup` 的含义为 `Replicate Double FP Values`。
+
+  [d1, d0] => [d0, d0]
+
+- `vcvtpd2psx` 的含义为 `Convert Packed Double-Precision Floating-Point Values to Packed Single-Precision Floating-Point Values`。
+
+  [d1, d0] => [0.0, 0.0, s1, s0]
+
+#### 3.11.2 过程中的浮点代码
+
+- XMM 寄存器最多可以传递 8 个浮点参数；
+- 函数使用寄存器 `%xmm0` 来返回浮点值；
+- 所有的 XMM 寄存器都是调用者保存的；
+- 当函数包含指针、整数和浮点数混合的参数时，指针和整数通过通用寄存器传递，而浮点数通过 XMM 寄存器传递；
+
+#### 3.11.3 浮点运算操作
+
+> 第一个源操作数 S1 可以是一个 XMM 寄存器或一个内存位置。第二个源操作数和目的操作数都必须是 XMM 寄存器。每个操作都有一条针对单精度的指令和一条双精度的指令。结果存放在目的寄存器中。
+
+与整数运算相似，浮点运算一般格式是
+
+```assembly
+vsubss 减数, 被减数, 目的寄存器
+```
+
+从练习题来看（中间过程），如果运算满足交换律且目的寄存器为源寄存器中一个，都会生成一样的顺序
+
+```assembly
+vaddss %xmm0, %xmm2, %xmm0
+vmulss %xmm0, %xmm2, %xmm0
+```
+
+并不按照上方的一般格式顺序，可能该顺序最优。
+
+#### 3.11.4 定义和使用浮点常数
+
+> 和整数运算操作不同，AVX 浮点操作不能以立即数值作为操作数。相反，编译器必须为所谓的常量值分配和初始化存储空间。然后代码再把这些值从内存读入。
+
+编译器使用（可能）叫段地址的方式访问常量浮点数；注意到汇编代码
+
+```assembly
+.align 8
+```
+
+对 8 字节进行对齐；但是 AVX 指令读写内存的时候不是要求 16 字节对齐吗？
+
+**虽然编译器声明 2 个 `.long` 来组成一个双精度浮点数，但是只使用每个 `.long` 最低的 4 个字节；**
+
+即使把示例代码中所有 `double` 类型修改成 `float`，编译器仍然会进行双精度浮点数运算，并将结果转换为单精度浮点值；
+
+```c
+float cel2fahr(float temp)
+{
+    return 1.8 * temp + 32.0;
+}
+```
+
+这可能是因为运算中有浮点常量和乘除运算时，会默认扩展成双精度浮点数进行运算；
+
+```c
+float cel2fahr(float temp)
+{
+    float a = 1.8;
+    return a * temp + 32.0;
+}
+```
+
+使用单精度浮点数变量时，则不需要扩展；注意变量 `a` 初始化的值的存储方式同浮点常数的方式是一致的；
+
+如果只是普通加法，则一个单精度浮点数常量只用一个 `.long` 来声明，并通过 `vaddss` 单精度浮点数运算获取不同字节长度的常量；对齐字节也由 8 变为了 4；
+
+#### 3.11.5 在浮点代码中使用位级操作
+
+书上刊印有些错误；
+
+- 位级异或
+
+  ```assembly
+  vxorps
+  vxorpd
+  ```
+
+- 位级或
+
+  ```assembly
+  vorps
+  vorpd
+  ```
+
+- 位级与
+
+  ```assembly
+  vandps
+  vandpd
+  ```
+
+> 这些指令对一个 XMM 寄存器中的所有 128 位进行布尔操作；
+
+#### 3.11.6 浮点比较操作
+
+书上刊印有些错误；
+
+- `vucomiss` 的含义为 `Unordered Compare Scalar Single-Precision Floating-Point Values and Set EFLAGS`。
+- `vucomisd` 的含义为 `Unordered Compare Scalar Double-Precision Floating-Point Values and Set EFLAGS`。
+- `vcomiss` 的含义为 `Compare Scalar Ordered Single-Precision Floating-Point Values and Set EFLAGS`。
+- `vcomisd` 的含义为 `Compare Scalar Ordered Double-Precision Floating-Point Values and Set EFLAGS`。
+
+> The UCOMISS instruction differs from the COMISS instruction in that it signals a SIMD floating-point invalid operation exception (#I) only if a source operand is an SNaN. The COMISS instruction signals an invalid operation exception when a source operand is either a QNaN or SNaN.[^1]
+>
+> Two separate kinds of NaNs are provided, termed *quiet NaNs* and *signaling NaNs*. Quiet NaNs are used to propagate errors resulting from invalid operations or values. Signaling NaNs can support advanced features such as mixing numerical and symbolic computation or other extensions to basic floating-point arithmetic.[^2]
+
+> 参数 S2 必须在 XMM 寄存器中，而 S1 可以在 XMM 寄存器中，也可以在内存中。
+>
+> 浮点比较指令会设置三个条件码：零标志位 `ZF`、进位标志位 `ZF` 和奇偶标志位 `PF`。对于整数操作，当最近的一次算术或逻辑运算产生的值的最低位字节是偶校验的（即这个字节中有偶数个 1），那么就会设置这个标志位。不过对于浮点比较，当两个操作数中任一个是 NaN 时，会设置该位。根据惯例，C 语言中如果有个参数为 NaN，就认为比较失败了。
+>
+> 通常 jp（jump on parity）指令是条件跳转，条件就是浮点比较得到一个无序的结果（PF = 1）。
+
+示例代码第 10 行
+
+```assembly
+vucomiss .LC0($rip), %xmm0
+```
+
+置位 x - 0 的结果，当
+
+- x - 0 > 0 时，`ZF` 和 `CF` 为 0；
+- x 为 `NaN` 时，`ZF` 和 `CF` 都为 1；
+
+```assembly
+setbe %al
+```
+
+`setbe` 是将寄存器最低字节置为 `ZF|CF` 的结果；
+
+练习题中，一个单精度浮点数乘以一个长整型，只会将长整型转化为单精度浮点数；
+
+#### 3.11.7 对浮点代码的观察结论
+
+> AVX2 还有能力在封装好的数据上执行并行操作，使计算执行得更快。编译器开发者正致力于自动化从标量代码到并行代码的转换，但是目前通过并行化获得更高性能的最可靠的方法是使用 GCC 支持的、操纵向量数据的 C 语言扩展。
+
+### 3.12 小结
+
+> 部分程序状态，如寄存器和运行时栈，对程序员来说是直接可见的。
+
+
+
+[^1]: <Intel 64 and IA-32 Architectures Software Developer's Manual Volume 2: Instruction Set Reference, A-Z>
+[^2]: https://en.wikipedia.org/wiki/NaN
 
