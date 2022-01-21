@@ -153,7 +153,7 @@ done:
 
  #### 3.7.4 栈上的局部存储
 
-当栈中存储局部变量时，是可以紧凑存储的；
+当栈中存储局部变量时，是可以紧凑存储的；**但是申请的时候得考虑到对齐的问题；**
 
 但是作为超过6个函数传参应该是必须占 8 个字节；
 
@@ -309,6 +309,16 @@ struct S2 {
 >
 > - 任何内存分配函数（alloca、malloc、calloc 或 realloc）生成的块的起始地址都必须是 16 的倍数。
 > - 大多数函数的栈帧的边界都必须是 16 字节的倍数。（这个要求有一些例外。）
+
+堆栈的默认对齐方式，在 `windows` 中：
+
+> 堆栈将始终保持为 16 字节对齐，除非是在 prolog 中（例如，压入返回地址之后），以及除非在某类帧函数的函数类型中指明。[^3]
+
+`gcc` 中：
+
+> `-mpreferred-stack-boundary`=num
+>
+> Attempt to keep the stack boundary aligned to a 2 raised to num byte boundary. If `-mpreferred-stack-boundary` is not specified, the default is 4 (16 bytes or 128 bits).[^4]
 
 ### 3.10 在机器级程序中将控制与数据结合起来
 
@@ -617,4 +627,6 @@ setbe %al
 
 [^1]: <Intel 64 and IA-32 Architectures Software Developer's Manual Volume 2: Instruction Set Reference, A-Z>
 [^2]: https://en.wikipedia.org/wiki/NaN
+[^3]: https://docs.microsoft.com/zh-cn/cpp/build/stack-usage?view=msvc-170
+[^4]: https://gcc.gnu.org/onlinedocs/gcc-4.2.4/gcc/i386-and-x86_002d64-Options.html
 
