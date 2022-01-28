@@ -1,9 +1,11 @@
 
+// gcc -O1
 long cread_alt(long *xp)
 {
     long a = 0;
+    long *ap = &a;
     if (!xp)
-        a = *xp;
-    return a;
+        xp = ap;
+    return *xp;
 }
 
