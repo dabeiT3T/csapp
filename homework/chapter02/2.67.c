@@ -1,26 +1,27 @@
-#include <stdio.h>
-
-int bad_int_size_is_32();
-
-int main()
-{
-    printf("%d\n", bad_int_size_is_32());
-    printf("%d\n", int_size_is_32());
-
-    return 0;
-}
-
-int int_size_is_32()
-{
-   int set_msb = 1 << 128;
-   return set_msb >> 128 == -1;
-}
 
 int bad_int_size_is_32()
 {
     int set_msb = 1 << 31;
+    /* some machine use << (x % 32) */
     int beyond_msb = 1 << 32;
 
     return set_msb && !beyond_msb;
 }
 
+// B.
+int int_size_is_32_al_32()
+{
+    int set_msb = 1 << 31;
+    int beyond_msb = set_msb << 1;
+    return set_msb && !beyond_msb;
+}
+
+// C.
+int int_size_is_32_al_16()
+{
+    int set_msb = 1 << 15 << 15 << 1;
+    int beyond_msb = set_msb << 1;
+    return set_msb && !beyond_msb;
+}
+
+// A. left/right shift count should less than the width of type
