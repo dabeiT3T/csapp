@@ -1,0 +1,9 @@
+
+4.47 is the best one if using PIPE which has only 5 stages.
+
+50% jump fails, 2 additional bubbles.
+4.47 => 5*0.5 + (5+2+2)*0.5 = 7
+
+4.48 => 9
+
+4.49 => 10

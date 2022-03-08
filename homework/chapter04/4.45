@@ -1,0 +1,7 @@
+
+A.
+The PUSH ESP instruction pushed the value of the ESP register as it existed before the instruction was executed. If a PUSH instruction uses a memory operand in which the ESP register is used for computing the operand address, the address of the operand is computed before the ESP register is decremented.
+
+B.
+movq REG, -8(%rsp)
+subq $8, %rsp

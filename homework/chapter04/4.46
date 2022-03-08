@@ -1,0 +1,7 @@
+
+A.
+The POP ESP instruction increments the stack pointer (ESP) before data at the old top of stack is written into the destination.
+
+B.
+addq $8, %rsp
+movq -8($rsp), REG
