@@ -1,0 +1,18 @@
+
+A.        
+          MAIN PATH
+              +
+   %xmm1    %xmm0
+     |        |
+   load       |
+     |        |
+    mul------add
+              |
+            %xmm0
+
+B.
+float add => 3.0
+C.
+long add => 1.0
+D.
+float add is the main path.
