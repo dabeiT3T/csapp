@@ -449,6 +449,8 @@ int main()
     // __256i: 0xffffffffffffffff 0000000000000000 0000000000000001 0000000000000000
     // -1 0 1 0
     _mm256_bsrli_epi128(ymm0, 8);
+    
+    return 0;
 }
 ```
 
@@ -669,5 +671,46 @@ __m128 _mm_cmp_ss (__m128 a, __m128 b, const int imm8); // vcmpss
 
 总结
 
-1. 当比较方式为 `U` （`无序`）时，存在 `NaN` 时，直接返回 `True`，其余时候存在 `NaN` 时都返回 `False`；
+1. 当比较方式为 `U` （`无序`）时，存在 `NaN` 时，直接返回 `True`，其余时候存在 `NaN` 时都返回 `False`；因此， `U` （`无序`） 只存在 `NOT-`（不大于、不小于之类的）的比较方式；
 2. `signaling` 和 `non-signaling` 只是用来控制是否抛出异常，对于比较结果没有影响；
+
+```c
+void setNaN(double *p);
+
+int main()
+{
+    double a[4] = {10.10, 8.8, 6.6};
+    double b[4] = {10.10, 9.9, 5.5, 0.1};
+
+    setNaN(&a[3]);
+
+    __m256d ymm0 = _mm256_loadu_pd(a);
+    __m256d ymm1 = _mm256_loadu_pd(b);
+
+    // -nan 0.0 -nan 0.0
+    _mm256_cmp_pd(ymm0, ymm1, _CMP_GE_OS);
+    // -nan 0.0 -nan -nan
+    _mm256_cmp_pd(ymm0, ymm1, _CMP_NLT_US);
+
+    return 0;
+}
+
+void setNaN(double *p)
+{
+    long *n = (long *) p;
+    // QNaN
+    // *n = 0x7fffffffffffffff;
+    // SNaN
+    *n = 0x7ff7ffffffffffff;
+}
+```
+
+#### cmpeq
+
+```c
+__m256i _mm256_cmpeq_epi16 (__m256i a, __m256i b); // vpcmpeqw
+__m256i _mm256_cmpeq_epi32 (__m256i a, __m256i b); // vpcmpeqd
+__m256i _mm256_cmpeq_epi64 (__m256i a, __m256i b); // vpcmpeqq
+__m256i _mm256_cmpeq_epi8 (__m256i a, __m256i b); // vpcmpeqb
+```
+
