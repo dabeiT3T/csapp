@@ -92,6 +92,12 @@ gcc -mavx2
 
 想要运用 `avx` 有必要对函数有个大致的了解，可以参考官方文档 [Intel Intrinsics Guide](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#techs=AVX,AVX2)。
 
+一般命令运行完都会将结果向量的 256-bit 至最高位置 0；
+
+```
+dst[MAX:256] := 0
+```
+
 #### abs
 
 ```c
@@ -183,7 +189,7 @@ __m256 _mm256_addsub_ps (__m256 a, __m256 b); // vaddsubps
 
 对两个向量偶数索引浮点数做减法（`a` - `b`），奇数索引浮点数做加法；
 
-索引同原数组的索引，假设向量的最左边索引为 0 如同数组的顺序。
+索引同原数组的索引，在此假设向量的最左边索引为 0 如同数组的顺序。
 
 ```c
 int main()
@@ -390,7 +396,7 @@ __m256d _mm256_broadcastsd_pd (__m128d a); // vpbroadcastsd
 
 ```c
 __m256i _mm_broadcastsi128_si256 (__m128i a); // vbroadcasti128
-__m256i _mm256_broadcastsi128_si256 (__m128d a); // vbroadcasti128
+__m256i _mm256_broadcastsi128_si256 (__m128i a); // vbroadcasti128
 ```
 
 将向量 `a` 128-bit 整型数据扩展复制到目标长度的向量中；
@@ -558,7 +564,7 @@ __m128d _mm_cmp_sd (__m128d a, __m128d b, const int imm8); // vcmpsd
 __m128 _mm_cmp_ss (__m128 a, __m128 b, const int imm8); // vcmpss
 ```
 
-得到将两个向量中对位的数按照 `imm8` 代表的方式进行比较的结果向量；成立时按照数的类型大小所有位置 1，否则置 0；
+得到将两个向量中对位的数按照 `imm8` 代表的方式进行比较的结果向量；成立时返回的结果按照数的类型大小所有位 1，否则置 0；
 
 `sd` 和 `ss` 比较低位单个浮点数，并从向量 `a` 中复制高位至 128 位，其余高位置 0；
 
@@ -713,4 +719,268 @@ __m256i _mm256_cmpeq_epi32 (__m256i a, __m256i b); // vpcmpeqd
 __m256i _mm256_cmpeq_epi64 (__m256i a, __m256i b); // vpcmpeqq
 __m256i _mm256_cmpeq_epi8 (__m256i a, __m256i b); // vpcmpeqb
 ```
+
+比较两向量对位整型是否相等；成立时返回的结果按照数的类型大小所有位 1（也就是有符号整型的 -1），否则置 0；
+
+#### cmpgt
+
+```c
+__m256i _mm256_cmpgt_epi16 (__m256i a, __m256i b); // vpcmpgtw
+__m256i _mm256_cmpgt_epi32 (__m256i a, __m256i b); // vpcmpgtd
+__m256i _mm256_cmpgt_epi64 (__m256i a, __m256i b); // vpcmpgtq
+__m256i _mm256_cmpgt_epi8 (__m256i a, __m256i b); // vpcmpgtb
+```
+
+比较向量 `a` 中对位整型是否大于向量 `b`对位整型；成立时返回的结果按照数的类型大小所有位 1（也就是有符号整型的 -1），否则置 0；
+
+#### cvtepi16
+
+```c
+__m256i _mm256_cvtepi16_epi32 (__m128i a); // vpmovsxwd
+__m256i _mm256_cvtepi16_epi64 (__m128i a); // vpmovsxwq
+```
+
+将向量中 16-bit 整型带符号扩展到 32-bit 或 64-bit；由于向量大小限制，`epi64` 会损失位于向量高位的 4 个整型；
+
+#### cvtepi32
+
+```c
+__m256i _mm256_cvtepi32_epi64 (__m128i a); // vpmovsxdq
+__m256d _mm256_cvtepi32_pd (__m128i a); // vcvtdq2pd
+__m256 _mm256_cvtepi32_ps (__m256i a); // cvtdq2ps
+```
+
+前者将 4 个 32-bit 整型带符号扩展到 64-bit 整型；
+
+后两个者是将 4 个 32-bit 整型 或 8 个 32-bit 整型带符号转换成 64-bit 双精度浮点数 或 32-bit 单精度浮点数；
+
+#### cvtepi8
+
+```c
+__m256i _mm256_cvtepi8_epi16 (__m128i a); // vpmovsxbw
+__m256i _mm256_cvtepi8_epi32 (__m128i a); // vpmovsxbd
+__m256i _mm256_cvtepi8_epi64 (__m128i a); // vpmovsxbq
+```
+
+将向量中 8-bit 整型带符号扩展到 16-bit、32-bit 或 64-bit；由于向量大小限制，会损失位于向量高位的整型；
+
+#### cvtepu16
+
+```c
+__m256i _mm256_cvtepu16_epi32 (__m128i a); // vpmovzxwd
+__m256i _mm256_cvtepu16_epi64 (__m128i a); // vpmovzxwq
+```
+
+将向量中 16-bit 无符号整型扩展到 32-bit 或 64-bit；由于向量大小限制，`epi64` 会损失位于向量高位的 4 个整型；
+
+#### cvtepu32
+
+```c
+__m256i _mm256_cvtepu32_epi64 (__m128i a); // vpmovzxdq
+```
+
+将向量中 32-bit 无符号整型扩展到 64-bit；
+
+#### cvtequ8
+
+```c
+__m256i _mm256_cvtepu8_epi16 (__m128i a); // vpmovzxbw
+__m256i _mm256_cvtepu8_epi32 (__m128i a); // vpmovzxbd
+__m256i _mm256_cvtepu8_epi64 (__m128i a); // vpmovzxbq
+```
+
+将向量中 8-bit 无符号整型扩展到 16-bit、32-bit 或 64-bit；由于向量大小限制，会损失位于向量高位的整型；
+
+#### cvtpd
+
+```c
+__m128i _mm256_cvtpd_epi32 (__m256d a); // vcvtpd2dq
+__m128 _mm256_cvtpd_ps (__m256d a); // vcvtpd2ps
+```
+
+将向量中 64-bit 双精度浮点数转化为 32-bit 整型或单精度浮点数；
+
+*结果向量的 128-bit 至最高位置 0；*
+
+#### cvtps
+
+```c
+__m256i _mm256_cvtps_epi32 (__m256 a); // vcvtps2dq
+__m256d _mm256_cvtps_pd (__m128 a); // vcvtps2pd
+```
+
+前者将 8 个 32-bit 单精度浮点数转换成 32-bit 整型；
+
+后者将 4 个 32-bit 当精度浮点数转换成 64-bit 双精度浮点数；
+
+#### cvtsd
+
+```c
+double _mm256_cvtsd_f64 (__m256d a); // vmovsd
+```
+
+返回向量中最低位 64-bit 双精度浮点数；
+
+#### cvtsi256
+
+```c
+int _mm256_cvtsi256_si32 (__m256i a); // vmovd
+```
+
+返回向量中最低位 32-bit 整型；
+
+#### cvtss
+
+```c
+float _mm256_cvtss_f32 (__m256 a); // vmovss
+```
+
+返回向量中最低位 32-bit 单精度浮点数；
+
+#### cvttpd
+
+```c
+__m128i _mm256_cvttpd_epi32 (__m256d a); // vcvttpd2dq
+```
+
+将源 256-bit 向量中 4 个双精度浮点数截断转化为 4 个 32-bit 整型存入 128-bit 整型向量中；
+
+#### cvttps
+
+```c
+__m256i _mm256_cvttps_epi32 (__m256 a); // vcvttps2dq
+```
+
+将源 256-bit 向量中 8 个单精度浮点数截断转化为 8 个 32-bit 整型存入 256-bit 整型向量中；
+
+#### div
+
+```c
+__m256d _mm256_div_pd (__m256d a, __m256d b); // vdivpd
+__m256 _mm256_div_ps (__m256 a, __m256 b); // vdivps
+```
+
+将向量中对位的浮点数进行相除操作；
+
+该操作延迟较高，以 `Haswell` 架构为例，双精度延迟达到了 25-35；
+
+#### dp
+
+```c
+__m256 _mm256_dp_ps (__m256 a, __m256 b, const int imm8); // vdpps
+```
+
+对向量 a 和 b 分为高低 128-bit 子向量分别进行相同的操作，`imm8` 只有最低 1 个字节有效；
+
+1. `imm8` 高 4 位对应的子向量 4 个单精度浮点数，如果某位为 1，则将对位索引单精度浮点数相乘得到乘积，否则乘积为 0；
+2. 将乘积相加得到和；
+3. `imm8` 低 4 位对应结果的子向量 4 个单精度浮点数，如果某位为 1，则将求得的和写入结果子向量对位中，否则写入 0；
+
+假设 `imm8` 高 4 位为 `0b1111` 则将向量 a 和向量b 低 128-bit 中 4 对单精度浮点数分别相乘并求它们的和；假设 `imm8` 低 4 位为 `0b1111` 则将结果向量低 128-bit 中低 4 对单精度浮点数都设置成求得的和；同理处理向量 a 和 b 中高 128-bit 中的浮点数；
+
+#### extract
+
+```c
+int _mm256_extract_epi16 (__m256i a, const int index);
+__int32 _mm256_extract_epi32 (__m256i a, const int index);
+__int64 _mm256_extract_epi64 (__m256i a, const int index);
+int _mm256_extract_epi8 (__m256i a, const int index);
+```
+
+通过 `index` 获取向量中索引的元素；
+
+实际的操作是将选中的索引元素移到最低位，返回最低位上的元素；
+
+```
+dst[15:0] := (a[255:0] >> (index[3:0] * 16))[15:0]
+```
+
+该函数会生成序列指令，比起原生指令性能差；所以没有对应的汇编指令；
+
+#### extractf128
+
+```c
+__m128d _mm256_extractf128_pd (__m256d a, const int imm8); // vextractf128
+__m128 _mm256_extractf128_si256 (__m256i a, const int imm8); // vextractf128
+__m128i _mm256_extractf128_si256 (__m256i a, const int imm8); // vextractf128
+```
+
+如果 `imm8` 最低位为 0 则取向量低位 128-bit；为 1 则取高位 128-bit；
+
+#### extracti128
+
+```c
+__m128i _mm256_extracti128_si256 (__m256i a, const int imm8); // vextracti128
+```
+
+从效果上来看同 `_mm256_extractf128_si256` 但是前者是 `AVX` 指令，本指令为 `AVX2`；
+
+#### floor
+
+```c
+__m256d _mm256_floor_pd (__m256d a); // vroundpd
+__m256 _mm256_floor_ps (__m256d a); // vroundps
+```
+
+对向量中每个浮点数进行向下取整；
+
+#### hadd
+
+```c
+__m256i _mm256_hadd_epi16 (__m256i a, __m256i b); // vphaddw
+__m256i _mm256_hadd_epi32 (__m256i a, __m256i b); // vphaddd
+__m256d _mm256_hadd_pd (__m256d a, __m256d b); // vhaddpd
+__m256 _mm256_hadd_ps (__m256 a, __m256 b); // vhaddps
+```
+
+水平方向将相邻的元素相加；注意是向量 a 的元素与向量 a 的相邻元素相加；
+
+目标向量低位四分之一存储向量 a （一半长度各个）的相邻水平和，然后是向量 b 的，相互交替；
+
+```
+dst[63:0] := a[127:64] + a[63:0]
+dst[127:64] := b[127:64] + b[63:0]
+dst[191:128] := a[255:192] + a[191:128]
+dst[255:192] := b[255:192] + b[191:128]
+dst[MAX:256] := 0
+```
+
+#### hadds
+
+```c
+__m256i _mm256_hadds_epi16 (__m256i a, __m256i b); // vphaddsw
+```
+
+水平方向将相邻的元素相加且考虑饱和问题；注意是向量 a 的元素与向量 a 的相邻元素相加；
+
+#### hsub
+
+```c
+__m256i _mm256_hsub_epi16 (__m256i a, __m256i b); // vphsubw
+__m256i _mm256_hsub_epi32 (__m256i a, __m256i b); // vphsubd
+__m256d _mm256_hsub_pd (__m256d a, __m256d b); // vhsubpd
+__m256 _mm256_hsub_ps (__m256 a, __m256 b); // vhsubps
+```
+
+水平方向将相邻的元素相减；注意是向量 a 的低位元素减去向量 a 相邻的高位元素；
+
+目标向量低位四分之一存储向量 a （一半长度各个）的相邻水平差，然后是向量 b 的，相互交替；
+
+```
+dst[63:0] := a[63:0] - a[127:64]
+dst[127:64] := b[63:0] - b[127:64]
+dst[191:128] := a[191:128] - a[255:192]
+dst[255:192] := b[191:128] - b[255:192]
+dst[MAX:256] := 0
+```
+
+#### hsubs
+
+```c
+__m256i _mm256_hsubs_epi16 (__m256i a, __m256i b); // vphsubsw
+```
+
+水平方向将相邻的元素相减且考虑饱和问题；注意是向量 a 的低位元素减去向量 a 相邻的高位元素；
+
+#### i32gather
 
