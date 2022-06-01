@@ -984,3 +984,63 @@ __m256i _mm256_hsubs_epi16 (__m256i a, __m256i b); // vphsubsw
 
 #### i32gather
 
+```c
+__m128i _mm_i32gather_epi32 (int const* base_addr, __m128i vindex, const int scale);
+// vpgatherdd
+__m256i _mm256_i32gather_epi32 (int const* base_addr, __m256i vindex, const int scale);
+// vpgatherdd
+__m128i _mm_i32gather_epi64 (__int64 const* base_addr, __m128i vindex, const int scale);
+// vpgatherdq
+__m256i _mm256_i32gather_epi64 (__int64 const* base_addr, __m128i vindex, const int scale); // vpgatherdq
+__m128d _mm_i32gather_pd (double const* base_addr, __m128i vindex, const int scale);
+// vgatherdpd
+__m256d _mm256_i32gather_pd (double const* base_addr, __m128i vindex, const int scale);
+// vgatherdpd
+__m128 _mm_i32gather_ps (float const* base_addr, __m128i vindex, const int scale);
+// vgatherdps
+__m256 _mm256_i32gather_ps (float const* base_addr, __m256i vindex, const int scale);
+// vgatherdps
+```
+
+通过 32-bit 索引从内存中获取 `函数最后标识的数据类型` 填充目标向量；地址以 `base_addr` 开始加上 `vindex` 中各个 32-bit 整型索引乘以比例 `scale` 个字节偏移量；`scale` 取值 1，2，4 或 8；偏移量计算有点类似指令 `leaq`；
+
+```
+FOR j := 0 to 3
+	i := j*32
+	m := j*32
+	addr := base_addr + SignExtend64(vindex[m+31:m]) * ZeroExtend64(scale) * 8
+	dst[i+31:i] := MEM[addr+31:addr]
+ENDFOR
+dst[MAX:128] := 0
+```
+
+#### mask_i32gather
+
+```c
+__m128i _mm_mask_i32gather_epi32 (__m128i src, int const* base_addr, __m128i vindex, __m128i mask, const int scale); // vpgatherdd
+__m256i _mm256_mask_i32gather_epi32 (__m256i src, int const* base_addr, __m256i vindex, __m256i mask, const int scale); // vpgatherdd
+__m128i _mm_mask_i32gather_epi64 (__m128i src, __int64 const* base_addr, __m128i vindex, __m128i mask, const int scale); // vpgatherdq
+__m256i _mm256_mask_i32gather_epi64 (__m256i src, __int64 const* base_addr, __m128i vindex, __m256i mask, const int scale); // vpgatherdq
+__m128d _mm_mask_i32gather_pd (__m128d src, double const* base_addr, __m128i vindex, __m128d mask, const int scale); // vgatherdpd
+__m256d _mm256_mask_i32gather_pd (__m256d src, double const* base_addr, __m128i vindex, __m256d mask, const int scale); // vgatherdpd
+__m128 _mm_mask_i32gather_ps (__m128 src, float const* base_addr, __m128i vindex, __m128 mask, const int scale); // vgatherdps
+__m256 _mm256_mask_i32gather_ps (__m256 src, float const* base_addr, __m256i vindex, __m256 mask, const int scale); // vgatherdps
+```
+
+通过 32-bit 索引从内存或向量中获取 `函数最后标识的数据类型` 填充目标向量；地址以 `base_addr` 开始加上 `vindex` 中各个对位 32-bit 整型索引乘以比例 `scale` 个字节偏移量；`scale` 取值 1，2，4 或 8；如果向量 `mask` 中对位掩码的最高位为 0 则从向量 `src` 中获取对位元素，否则计算出地址后从内存中获取；
+
+```
+FOR j := 0 to 3
+	i := j*32
+	m := j*32
+	IF mask[i+31]
+		addr := base_addr + SignExtend64(vindex[m+31:m]) * ZeroExtend64(scale) * 8
+		dst[i+31:i] := MEM[addr+31:addr]
+	ELSE
+		dst[i+31:i] := src[i+31:i]
+	FI
+ENDFOR
+mask[MAX:128] := 0
+dst[MAX:128] := 0
+```
+
