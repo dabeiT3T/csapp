@@ -1044,3 +1044,40 @@ mask[MAX:128] := 0
 dst[MAX:128] := 0
 ```
 
+#### i64gather
+
+```c
+__m128i _mm_i64gather_epi32 (int const* base_addr, __m128i vindex, const int scale);
+// vpgatherqd
+__m128i _mm256_i64gather_epi32 (int const* base_addr, __m256i vindex, const int scale);
+// vpgatherqd
+__m128i _mm_i64gather_epi64 (__int64 const* base_addr, __m128i vindex, const int scale);
+// vpgatherqq
+__m256i _mm256_i64gather_epi64 (__int64 const* base_addr, __m256i vindex, const int scale); // vpgatherqq
+__m128d _mm_i64gather_pd (double const* base_addr, __m128i vindex, const int scale);
+// vgatherqpd
+__m256d _mm256_i64gather_pd (double const* base_addr, __m256i vindex, const int scale);
+// vgatherqpd
+__m128 _mm_i64gather_ps (float const* base_addr, __m128i vindex, const int scale);
+// vgatherqps
+__m128 _mm256_i64gather_ps (float const* base_addr, __m256i vindex, const int scale);
+// vgatherqps
+```
+
+通过 64-bit 索引从内存中获取 `函数最后标识的数据类型` 填充目标向量；地址以 `base_addr` 开始加上 `vindex` 中各个 64-bit 整型索引乘以比例 `scale` 个字节偏移量；`scale` 取值 1，2，4 或 8；偏移量计算有点类似指令 `leaq`；由于使用了 64-bit 索引，所以元素个数比 `i32gather` 显著要少；
+
+#### mask_i64gather
+
+```c
+__m128i _mm_mask_i64gather_epi32 (__m128i src, int const* base_addr, __m128i vindex, __m128i mask, const int scale); // vpgatherqd
+__m128i _mm256_mask_i64gather_epi32 (__m128i src, int const* base_addr, __m256i vindex, __m128i mask, const int scale); // vpgatherqd
+__m128i _mm_mask_i64gather_epi64 (__m128i src, __int64 const* base_addr, __m128i vindex, __m128i mask, const int scale); // vpgatherqq
+__m256i _mm256_mask_i64gather_epi64 (__m256i src, __int64 const* base_addr, __m256i vindex, __m256i mask, const int scale); // vpgatherqq
+__m128d _mm_mask_i64gather_pd (__m128d src, double const* base_addr, __m128i vindex, __m128d mask, const int scale); // vgatherqpd
+__m256d _mm256_mask_i64gather_pd (__m256d src, double const* base_addr, __m256i vindex, __m256d mask, const int scale); // vgatherqpd
+__m128 _mm_mask_i64gather_ps (__m128 src, float const* base_addr, __m128i vindex, __m128 mask, const int scale); // vgatherqps
+__m128 _mm256_mask_i64gather_ps (__m128 src, float const* base_addr, __m256i vindex, __m128 mask, const int scale); // vgatherqps
+```
+
+通过 64-bit 索引从内存或向量中获取 `函数最后标识的数据类型` 填充目标向量；地址以 `base_addr` 开始加上 `vindex` 中各个对位 64-bit 整型索引乘以比例 `scale` 个字节偏移量；`scale` 取值 1，2，4 或 8；如果向量 `mask` 中对位掩码的最高位为 0 则从向量 `src` 中获取对位元素，否则计算出地址后从内存中获取；由于使用了 64-bit 索引，所以元素个数比 `mask_i32gather` 显著要少；
+
