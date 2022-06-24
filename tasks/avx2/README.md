@@ -895,7 +895,7 @@ int _mm256_extract_epi8 (__m256i a, const int index);
 dst[15:0] := (a[255:0] >> (index[3:0] * 16))[15:0]
 ```
 
-该函数会生成序列指令，比起原生指令性能差；所以没有对应的汇编指令；
+该函数会生成序列指令，比起原生指令可能性能较差；所以没有对应的汇编指令；
 
 #### extractf128
 
@@ -913,7 +913,7 @@ __m128i _mm256_extractf128_si256 (__m256i a, const int imm8); // vextractf128
 __m128i _mm256_extracti128_si256 (__m256i a, const int imm8); // vextracti128
 ```
 
-从效果上来看同 `_mm256_extractf128_si256` 但是前者是 `AVX` 指令，本指令为 `AVX2`；
+从效果上来看同 `_mm256_extractf128_si256` 但是前者是 `AVX` 指令，本指令为 `AVX2`；区别可以参考 `_mm256_insertf128_si256`；
 
 #### floor
 
@@ -1080,4 +1080,134 @@ __m128 _mm256_mask_i64gather_ps (__m128 src, float const* base_addr, __m256i vin
 ```
 
 通过 64-bit 索引从内存或向量中获取 `函数最后标识的数据类型` 填充目标向量；地址以 `base_addr` 开始加上 `vindex` 中各个对位 64-bit 整型索引乘以比例 `scale` 个字节偏移量；`scale` 取值 1，2，4 或 8；如果向量 `mask` 中对位掩码的最高位为 0 则从向量 `src` 中获取对位元素，否则计算出地址后从内存中获取；由于使用了 64-bit 索引，所以元素个数比 `mask_i32gather` 显著要少；
+
+#### insert
+
+```c
+__m256i _mm256_insert_epi16 (__m256i a, __int16 i, const int index);
+__m256i _mm256_insert_epi32 (__m256i a, __int32 i, const int index);
+__m256i _mm256_insert_epi64 (__m256i a, __int64 i, const int index);
+__m256i _mm256_insert_epi8 (__m256i a, __int8 i, const int index);
+```
+
+将向量复制至目标向量，然后根据 `index` 将 `i` 替换目标向量中对应索引位置的值；
+
+该函数会生成序列指令，比起原生指令可能性能较差；所以没有对应的汇编指令；
+
+#### insertf128
+
+```c
+__m256d _mm256_insertf128_pd (__m256d a, __m128d b, int imm8); // vinsertf128
+__m256 _mm256_insertf128_ps (__m256 a, __m128 b, int imm8); // vinsertf128
+__m256i _mm256_insertf128_si256 (__m256i a, __m128i b, int imm8); // vinsertf128
+```
+
+将向量复制至目标向量，然后根据 `imm8` 将 128-bit 向量 `b` 替换目标向量中对应位置的值；当 `imm8` 为 0 时，替换低位 128-bit 的值，为 1 时，替换高位 128-bit 的值，也就是替换向量的一半；
+
+本函数使用 `avx` 指令集；因为替换跟具体数据类型无关，所有函数使用相同的指令；
+
+`_mm256_insertf128_si256` 在 `avx2` 中新增了对应的一条 `_mm256_inserti128_si256` ，可能用来保持向量数据类型的一致性；
+
+#### inserti128
+
+```c
+__m256i _mm256_inserti128_si256 (__m256i a, __m128i b, const int imm8); // vinserti128
+```
+
+将向量复制至目标向量，然后根据 `imm8` 将由整型组成的 128-bit 向量 `b` 替换目标向量中对应位置的值；当 `imm8` 为 0 时，替换低位 128-bit 的值，为 1 时，替换高位 128-bit 的值，也就是替换向量的一半；
+
+本函数使用 `avx2` 指令集；
+
+#### lddqu
+
+```c
+__m256i _mm256_lddqu_si256 (__m256i const * mem_addr); // vlddqu
+```
+
+从未对齐的内存中加载 256-bit  整型数据；
+
+> 当数据跨越缓存线边界时，可能比 `_mm256_loadu_si256` 执行得更好。
+
+#### load
+
+```c
+__m256d _mm256_load_pd (double const * mem_addr); // vmovapd
+__m256 _mm256_load_ps (float const * mem_addr); // vmovaps
+__m256i _mm256_load_si256 (__m256i const * mem_addr); // vmovdqa
+```
+
+从**必须** 32-bit 边界对齐的内存中加载 256-bit 数据；
+
+根据 `函数最后标识的数据类型` 目标向量包含的元素个数不同；
+
+#### loadu
+
+```c
+__m256d _mm256_loadu_pd (double const * mem_addr); // vmovupd
+__m256 _mm256_loadu_ps (float const * mem_addr); // vmovups
+__m256i _mm256_loadu_si256 (__m256i const * mem_addr); // vmovdqu
+```
+
+从**无须**边界对齐的内存中加载 256-bit 数据；
+
+根据 `函数最后标识的数据类型` 目标向量包含的元素个数不同；
+
+#### loadu2
+
+```c
+__m256 _mm256_loadu2_m128 (float const* hiaddr, float const* loaddr);
+__m256d _mm256_loadu2_m128d (double const* hiaddr, double const* loaddr);
+__m256i _mm256_loadu2_m128i (__m128i const* hiaddr, __m128i const* loaddr);
+```
+
+从内存中加载两个 128-bit 数据，合并至 256-bit 向量中；内存地址无需对齐特定的边界；
+
+根据 `函数最后标识的数据类型` 目标向量包含的元素个数不同；
+
+该函数会生成序列指令，比起原生指令可能性能较差；所以没有对应的汇编指令；
+
+#### madd
+
+```c
+__m256i _mm256_madd_epi16 (__m256i a, __m256i b); // vpmaddwd
+```
+
+将向量 `a` 和 `b` 中 16-bit 整型相乘后带符号扩展至 32-bit 整型；水平向将相邻两个 32-bit 整型相加得到目标向量；
+
+```
+FOR j := 0 to 7
+	i := j*32
+	dst[i+31:i] := SignExtend32(a[i+31:i+16]*b[i+31:i+16]) + SignExtend32(a[i+15:i]*b[i+15:i])
+ENDFOR
+dst[MAX:256] := 0
+```
+
+#### maddubs
+
+```c
+__m256i _mm256_maddubs_epi16 (__m256i a, __m256i b); // vpmaddubsw
+```
+
+将向量 `a` 中无符号 8-bit 整型乘以对位向量 `b` 中有符号 8-bit 整型，得到有符号 16-bit 整型；水平向将相邻两个有符号 16-bit 整型相加且考虑饱和问题；
+
+```
+FOR j := 0 to 15
+	i := j*16
+	dst[i+15:i] := Saturate16( a[i+15:i+8]*b[i+15:i+8] + a[i+7:i]*b[i+7:i] )
+ENDFOR
+dst[MAX:256] := 0
+```
+
+#### maskload
+
+```c
+__m128i _mm_maskload_epi32 (int const* mem_addr, __m128i mask); // vpmaskmovd
+__m256i _mm256_maskload_epi32 (int const* mem_addr, __m256i mask); // vpmaskmovd
+__m128i _mm_maskload_epi64 (__int64 const* mem_addr, __m128i mask); // vpmaskmovq
+__m256i _mm256_maskload_epi64 (__int64 const* mem_addr, __m256i mask); // vpmaskmovq
+__m128d _mm_maskload_pd (double const * mem_addr, __m128i mask); // vmaskmovpd
+__m256d _mm256_maskload_pd (double const * mem_addr, __m256i mask); // vmaskmovpd
+__m128 _mm_maskload_ps (float const * mem_addr, __m128i mask); //vmaskmovps
+__m256 _mm256_maskload_ps (float const * mem_addr, __m256i mask); // vmaskmovps
+```
 
