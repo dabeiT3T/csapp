@@ -1,0 +1,11 @@
+
+capacity = C(hole) * (r-R(hole))
+R(hole) = xr (0<x<1)
+capacity =2π*(xr)*(r-xr)
+         =2π*r^2*x(1-x) 
+
+2π*r^2 is constant, so
+Max(capacity) = Max(x-x^2)
+f(x) = x-x^2 when x = 1/2, f(1/2) >= f(x)
+
+so x=1/2.

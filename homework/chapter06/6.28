@@ -1,0 +1,10 @@
+
+A. None
+B. ct = 0xc7, ci = 0b100, co = 0b00~0b11
+   0x18f0~0x18f3
+   ct = 0x05, ci = 0b100, co = 0b00~0b11
+   0x00b0~0x00b3
+C. ct = 0x71, ci = 0b101, co = 0b00~0b11
+   0x0e34~0x0e37
+D. ct = 0xde, ci = 0b111, co = 0b00~0b11
+   0x1bdc~0x1bdf

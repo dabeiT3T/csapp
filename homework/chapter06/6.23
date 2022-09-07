@@ -1,0 +1,6 @@
+
+T(avg_rotation) = 1/15000 * 60 * 1000 / 2= 2ms
+T(avg_transfer) = 1/15000 * 60 * 1000 / 800 = 0.005ms
+T = T(avg_seek) + T(avg_rotation) + T(avg_transfer)
+  = 4 + 2 + 0.005
+  = 6.005ms

@@ -1,0 +1,15 @@
+
+T(max_rotation) = 1/15000 * 60 * 1000 = 4ms
+T(avg_rotation) = T(max_rotation) / 2 = 2ms
+2MB = 2097152B / 512 = 4096
+
+A. track_count = 4096 / 1000 = 4...96/1000
+   4 < 8, so no another seeking.
+   T = T(avg_seek) + T(avg_rotation) + 4096/1000 * T(max_rotation)
+     = 4 + 2 + 4.096 * 4
+     = 22.384ms
+
+B. T = (T(avg_seek) + T(avg_rotation) * 4096) + 4096/1000 * T(max_rotation)
+     = (4 + 2) * 4096 + 4.096 * 4
+     = 24576 + 16.384
+     = 24592.384ms
