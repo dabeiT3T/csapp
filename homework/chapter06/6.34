@@ -1,0 +1,14 @@
+
+dst:
+    r0  r1  r2  r3
+c0  m   m   m   m
+c1  m   m   m   m
+c2  m   m   m   m
+c3  m   m   m   m
+
+src:
+    r0  r1  r2  r3
+c0  m   m   h   m
+c1  m   h   m   h
+c2  m   m   h   m
+c3  m   h   m   h
