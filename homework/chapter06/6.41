@@ -1,0 +1,6 @@
+
+C=64*1024=65536, E=1, B=4, S=16384
+r in buffer[0][0] miss => s0
+g,b,a in buffer[0][0] hit => s0
+...
+=> 25%

@@ -1,0 +1,8 @@
+
+C=64*1024=65536, E=1, B=4, S=16384
+cptr == &buffer[0][0].r
+++cptr == &buffer[0][0].g
+++cptr == &buffer[0][0].b
+++cptr == &buffer[0][0].c
+same as 6.41
+25%
