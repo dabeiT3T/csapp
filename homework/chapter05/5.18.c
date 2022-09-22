@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
+#include <immintrin.h>
 
 #define ARRAY_LEN 1000000
 #define X_VALUE 1.00000034524
@@ -34,6 +35,9 @@ double poly9x3a(double a[], double x, long degree);
 double poly12x3a(double a[], double x, long degree);
 double poly12x4a(double a[], double x, long degree);
 double poly12x6a(double a[], double x, long degree);
+double polyavx2(double a[], double x, long degree);
+double polyavx2x2a(double a[], double x, long degree);
+double polyavx2x4a(double a[], double x, long degree);
 
 int main()
 {
@@ -77,7 +81,10 @@ int main()
     poly12x3a(a, x, ARRAY_LEN-1);
     poly12x4a(a, x, ARRAY_LEN-1);
     poly12x6a(a, x, ARRAY_LEN-1);
-    
+    polyavx2(a, x, ARRAY_LEN-1);
+    polyavx2x2a(a, x, ARRAY_LEN-1);
+    polyavx2x4a(a, x, ARRAY_LEN-1);
+
     return 0;
 }
 
@@ -1227,6 +1234,201 @@ double poly12x6a(double a [], double x, long degree)
     return result0;
 }
 
+double polyavx2(double a [], double x, long degree)
+{
+    double xs[4] = {x, x*x, x*x*x, x*x*x*x};
+    double xpwr, resultd;
+
+    long i;
+    long limit = degree - 3;
+
+    __m256d av;
+    __m128d tmp;
+    __m256d xv = _mm256_loadu_pd(xs);
+    __m256d result = _mm256_set_pd(0, 0, 0, a[0]);
+    __m256d xpwrv = _mm256_set1_pd(x*x*x*x);
+
+    struct timespec start, end;
+    clock_gettime(CLOCK_REALTIME, &start);
+    for (i = 1; i <= limit; i+=4) {
+        // load a[] to vector av
+        av = _mm256_loadu_pd(a+i);
+        // [a0, a1, a2, a3] * [1, x, xx, xxx]
+        av = _mm256_mul_pd(av, xv);
+        // [r0, r1, r2, r3] += [a0, a1x, a2xx, a3xxx]
+        result = _mm256_add_pd(result, av);
+        // xv = [x, xx, xxx, xxxx]
+        xv = _mm256_mul_pd(xv, xpwrv);
+    }
+
+    // sum result
+    result = _mm256_hadd_pd(result, result);
+    // high 128bits
+    tmp = _mm256_extractf128_pd(result, 1);
+    av = _mm256_castpd128_pd256(tmp);
+    result = _mm256_add_pd(result, av);
+    // using _mm256_cvtsd_f64(result) throws error...
+    // resultd = _mm256_cvtsd_f64(result);
+    _mm256_storeu_pd(xs, result);
+    resultd = xs[0];
+    _mm256_storeu_pd(xs, xv);
+    xpwr = xs[0];
+    
+    for (; i <= degree; i++) {
+        resultd += a[i] * xpwr;
+        xpwr *= x;
+    }
+
+    clock_gettime(CLOCK_REALTIME, &end);
+    printf(
+        "polyavx2\t%9ld(%.2lfx):\t%lf\n",
+        end.tv_nsec-start.tv_nsec,
+        baseTime/(end.tv_nsec-start.tv_nsec),
+        resultd
+    );
+    return resultd;
+}
+
+double polyavx2x2a(double a [], double x, long degree)
+{
+    double xs[4] = {x, x*x, x*x*x, x*x*x*x};
+    double xpwr, resultd;
+
+    long i;
+    long limit = degree - 7;
+
+    __m256d av0;
+    __m256d av1;
+    __m128d tmp;
+    __m256d xv0 = _mm256_loadu_pd(xs);
+    __m256d xv1 = _mm256_loadu_pd(xs);
+    __m256d result = _mm256_set_pd(0, 0, 0, a[0]);
+    __m256d xpwrv = _mm256_set1_pd(x*x*x*x);
+    xv1 = _mm256_mul_pd(xv1, xpwrv);
+    xpwrv = _mm256_mul_pd(xpwrv, xpwrv);
+
+    struct timespec start, end;
+    clock_gettime(CLOCK_REALTIME, &start);
+    for (i = 1; i <= limit; i+=8) {
+        // load a[] to vector av
+        av0 = _mm256_loadu_pd(a+i);
+        av1 = _mm256_loadu_pd(a+i+4);
+        // [a0, a1, a2, a3] * [1, x, xx, xxx]
+        av0 = _mm256_mul_pd(av0, xv0);
+        av1 = _mm256_mul_pd(av1, xv1);
+        // [r0, r1, r2, r3] += [a0, a1x, a2xx, a3xxx]
+        av0 = _mm256_hadd_pd(av0, av1);
+        result = _mm256_add_pd(result, av0);
+        // xv = [x, xx, xxx, xxxx]
+        xv0 = _mm256_mul_pd(xv0, xpwrv);
+        xv1 = _mm256_mul_pd(xv1, xpwrv);
+    }
+
+    // sum result
+    result = _mm256_hadd_pd(result, result);
+    // high 128bits
+    tmp = _mm256_extractf128_pd(result, 1);
+    av0 = _mm256_castpd128_pd256(tmp);
+    result = _mm256_add_pd(result, av0);
+    _mm256_storeu_pd(xs, result);
+    resultd = xs[0];
+    _mm256_storeu_pd(xs, xv0);
+    xpwr = xs[0];
+    
+    for (; i <= degree; i++) {
+        resultd += a[i] * xpwr;
+        xpwr *= x;
+    }
+
+    clock_gettime(CLOCK_REALTIME, &end);
+    printf(
+        "polyavx2x2\t%9ld(%.2lfx):\t%lf\n",
+        end.tv_nsec-start.tv_nsec,
+        baseTime/(end.tv_nsec-start.tv_nsec),
+        resultd
+    );
+    return resultd;
+}
+
+double polyavx2x4a(double a [], double x, long degree)
+{
+    double xs[4] = {x, x*x, x*x*x, x*x*x*x};
+    double xpwr, resultd;
+
+    long i;
+    long limit = degree - 15;
+
+    __m256d av0;
+    __m256d av1;
+    __m256d av2;
+    __m256d av3;
+
+    __m128d tmp;
+    __m256d xv0 = _mm256_loadu_pd(xs);
+    __m256d xv1, xv2, xv3;
+
+    __m256d result = _mm256_set_pd(0, 0, 0, a[0]);
+    __m256d xpwrv = _mm256_set1_pd(x*x*x*x);
+
+    xv1 = _mm256_mul_pd(xv0, xpwrv);
+    xv2 = _mm256_mul_pd(xv1, xpwrv);
+    xv3 = _mm256_mul_pd(xv2, xpwrv);
+    // xpwrv = [x^8, x^8, x^8, x^8]
+    xpwrv = _mm256_mul_pd(xpwrv, xpwrv);
+    // xpwrv = [x^16, x^16, x^16, x^16]
+    xpwrv = _mm256_mul_pd(xpwrv, xpwrv);
+
+    struct timespec start, end;
+    clock_gettime(CLOCK_REALTIME, &start);
+    for (i = 1; i <= limit; i+=16) {
+        // load a[] to vector av
+        av0 = _mm256_loadu_pd(a+i);
+        av1 = _mm256_loadu_pd(a+i+4);
+        av2 = _mm256_loadu_pd(a+i+8);
+        av3 = _mm256_loadu_pd(a+i+12);
+        // [a0, a1, a2, a3] * [1, x, xx, xxx]
+        av0 = _mm256_mul_pd(av0, xv0);
+        av1 = _mm256_mul_pd(av1, xv1);
+        av2 = _mm256_mul_pd(av2, xv2);
+        av3 = _mm256_mul_pd(av3, xv3);
+        // [r0, r1, r2, r3] += [a0, a1x, a2xx, a3xxx]
+        av0 = _mm256_hadd_pd(av0, av1);
+        av2 = _mm256_hadd_pd(av2, av3);
+        av0 = _mm256_hadd_pd(av0, av2);
+        result = _mm256_add_pd(result, av0);
+        // xv = [x, xx, xxx, xxxx]
+        xv0 = _mm256_mul_pd(xv0, xpwrv);
+        xv1 = _mm256_mul_pd(xv1, xpwrv);
+        xv2 = _mm256_mul_pd(xv2, xpwrv);
+        xv3 = _mm256_mul_pd(xv3, xpwrv);
+    }
+
+    // sum result
+    result = _mm256_hadd_pd(result, result);
+    // high 128bits
+    tmp = _mm256_extractf128_pd(result, 1);
+    av0 = _mm256_castpd128_pd256(tmp);
+    result = _mm256_add_pd(result, av0);
+    _mm256_storeu_pd(xs, result);
+    resultd = xs[0];
+    _mm256_storeu_pd(xs, xv0);
+    xpwr = xs[0];
+    
+    for (; i <= degree; i++) {
+        resultd += a[i] * xpwr;
+        xpwr *= x;
+    }
+
+    clock_gettime(CLOCK_REALTIME, &end);
+    printf(
+        "polyavx2x4\t%9ld(%.2lfx):\t%lf\n",
+        end.tv_nsec-start.tv_nsec,
+        baseTime/(end.tv_nsec-start.tv_nsec),
+        resultd
+    );
+    return resultd;
+}
+
 //
 // Intel Xeon(Skylake) Platinum 8163
 // 8vCPU 8GiB
@@ -1234,36 +1436,39 @@ double poly12x6a(double a [], double x, long degree)
 //
 // gcc -Og -mavx2 5.18.c -o 5.18 && ./5.18
 //
-// poly          3380954(1.00x):   631454548160.117310
-// polyh         4886367(0.69x):   631454548160.108887
+// poly          3397132(1.00x):   631454548160.117310
+// polyh         4884646(0.70x):   631454548160.108887
 // ----------------
-// poly2x1a      1711412(1.98x):   631454548170.339355
-// poly3x1a      1164472(2.90x):   631454548180.585327
-// poly4x1a       859251(3.93x):   631454548166.764404
-// poly5x1a       694615(4.87x):   631454548162.592896
-// poly6x1a       585700(5.77x):   631454548163.157349
-// poly7x1a       607349(5.57x):   631454548166.517212
-// poly8x1a       634687(5.33x):   631454548171.590210
+// poly2x1a      1705027(1.99x):   631454548170.339355
+// poly3x1a      1163901(2.92x):   631454548180.585327
+// poly4x1a       887473(3.83x):   631454548166.764404
+// poly5x1a       722161(4.70x):   631454548162.592896
+// poly6x1a       620626(5.47x):   631454548163.157349
+// poly7x1a       609869(5.57x):   631454548166.517212
+// poly8x1a       650388(5.22x):   631454548171.590210
 // ----------------
-// poly2x2       1716023(1.97x):   631454548170.337524
-// poly3x3       1205678(2.80x):   631454548180.579590
-// poly4x4        893099(3.79x):   631454548166.774048
-// poly5x5        786363(4.30x):   631454548162.572754
-// poly6x6        725785(4.66x):   631454548163.166992
-// poly7x7        567913(5.95x):   631454548166.527466
-// poly8x8        578621(5.84x):   631454548171.570068
-// poly9x9        594496(5.69x):   631454548167.081543
-// poly10x10      589430(5.74x):   631454548165.524414
+// poly2x2       1704349(1.99x):   631454548170.337524
+// poly3x3       1203723(2.82x):   631454548180.579590
+// poly4x4        898665(3.78x):   631454548166.774048
+// poly5x5        786718(4.32x):   631454548162.572754
+// poly6x6        710220(4.78x):   631454548163.166992
+// poly7x7        581645(5.84x):   631454548166.527466
+// poly8x8        586438(5.79x):   631454548171.570068
+// poly9x9        578071(5.88x):   631454548167.081543
+// poly10x10      622498(5.46x):   631454548165.524414
 // ----------------
-// poly4x2a       887593(3.81x):   631454548166.762207
-// poly6x2a       628840(5.38x):   631454548163.154419
-// poly6x3a       611384(5.53x):   631454548179.182373
-// poly8x2a       581303(5.82x):   631454548183.581299
-// poly8x4a       610031(5.54x):   631454548183.589111
-// poly9x3a       553854(6.10x):   631454548167.086182
-// poly12x3a      549039(6.16x):   631454548176.283203
-// poly12x4a      538230(6.28x):   631454548176.271240
-// poly12x5a      576508(5.86x):   631454548176.273193
+// poly4x2a       892259(3.81x):   631454548166.762207
+// poly6x2a       615817(5.52x):   631454548163.154419
+// poly6x3a       628315(5.41x):   631454548179.182373
+// poly8x2a       614620(5.53x):   631454548183.581299
+// poly8x4a       604828(5.62x):   631454548183.589111
+// poly9x3a       575552(5.90x):   631454548167.086182
+// poly12x3a      524887(6.47x):   631454548176.283203
+// poly12x4a      545710(6.23x):   631454548176.271240
+// poly12x5a      562024(6.04x):   631454548176.273193
+// polyavx2       963597(3.53x):   631454548166.774048
+// polyavx2x2     520933(6.52x):   631454548171.571899
+// polyavx2x4     347821(9.77x):   631454548168.858765
 //
-// poly12x3a or poly12x4a might be the best way.
+// polyavx2x4 might be the best way.
 //
