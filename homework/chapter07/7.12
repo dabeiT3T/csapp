@@ -1,0 +1,9 @@
+
+PC + offset = call_addr
+offset = call_addr - PC
+
+PC + r.addend = func_addr + r.offset
+PC = func_addr + r.offset - r.addend
+
+A. 0x4004f8 - (0x4004e0 + 0xa - (-0x4)) = 0xa
+B. 0x400500 - (0x4004d0 + 0xa + 0x4) = 0x22

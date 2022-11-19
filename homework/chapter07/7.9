@@ -1,0 +1,14 @@
+
+The main in bar6.c isn't initialized with a default value, so it is a weak type.
+The main in foo6.c is a global function, it is a strong type.
+The linker choose the strong type automatically.
+The main as a parameter of printf() is the main in foo6.c.
+But the printf() treat the main as a char, so the system get a char(one byte)
+from the address of main().
+
+<main>:
+55          push %rbq
+48 89 e5    mov %rsp, $rbq
+
+0x55 means push %rbq
+0x48 means mov
